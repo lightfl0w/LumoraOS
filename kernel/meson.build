@@ -1,8 +1,15 @@
 kernel_elf = executable('kernel.elf',
   'arch/x86_64/boot.S',
+  'arch/x86_64/gdt.c',
+  'arch/x86_64/idt.c',
+  'arch/x86_64/isr.S',
   'core/main.c',
   'drivers/serial.c',
-  c_args: common_cflags,
+  'mm/paging.c',
+  c_args: common_cflags + [
+    '-mno-sse',
+    '-mno-sse2',
+  ],
   link_args: common_cflags + [
     '-nostdlib',
     '-static',
