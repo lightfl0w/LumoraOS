@@ -13,6 +13,7 @@ kernel_elf = executable('kernel.elf',
     '-mno-sse',
     '-mno-sse2',
   ],
+  link_depends: files('arch/x86_64/linker.ld'),
   link_args: common_cflags + [
     '-nostdlib',
     '-static',
