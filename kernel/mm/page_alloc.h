@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define PAGE_SIZE 4096ull
+
 struct mb2_info;
 
 void page_alloc_init(const struct mb2_info *info);

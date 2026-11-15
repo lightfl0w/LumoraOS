@@ -8,6 +8,7 @@ kernel_elf = executable('kernel.elf',
   'core/main.c',
   'drivers/pit.c',
   'drivers/serial.c',
+  'mm/kmalloc.c',
   'mm/page_alloc.c',
   'mm/paging.c',
   c_args: common_cflags + [

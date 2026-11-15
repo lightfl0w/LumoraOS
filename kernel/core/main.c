@@ -7,6 +7,7 @@
 #include "../arch/x86_64/lapic.h"
 #include "../arch/x86_64/pic.h"
 #include "../drivers/serial.h"
+#include "../mm/kmalloc.h"
 #include "../mm/page_alloc.h"
 #include "../mm/paging.h"
 
@@ -109,6 +110,30 @@ void kmain(uint32_t magic, const struct mb2_info *info) {
     serial_puts(" pages (");
     serial_putdec(page_free_count());
     serial_puts(" free), selftest ok\n");
+
+    /* 内核堆自测，之后可能会删 */
+    char *p = kmalloc(100);
+    char *q = kmalloc(100);
+
+    if (p == NULL || q == NULL || p == q)
+        die("kmalloc selftest failed");
+    for (uint32_t i = 0; i < 100; i++)
+        p[i] = (char)i;
+    if (p[99] != 99)
+        die("kmalloc not writable");
+    kfree(p);
+    kfree(q);
+
+    if (kmalloc(0) != NULL || kmalloc(KMALLOC_MAX + 1) != NULL)
+        die("kmalloc size check failed");
+
+    char *r = kmalloc(100);
+
+    if (r != q)
+        die("kmalloc LIFO selftest failed");
+    kfree(r);
+
+    serial_puts("kernel: kmalloc selftest ok\n");
 
     dump_boot_info(info);
 

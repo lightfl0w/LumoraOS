@@ -4,8 +4,6 @@
 #include "../../include/mb2.h"
 #include "page_alloc.h"
 
-#define PAGE_SIZE 4096ull
-
 static uint64_t free_head;
 static uint64_t free_count;
 static uint64_t total_count;
