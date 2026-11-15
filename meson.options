@@ -1,0 +1,4 @@
+option('ovmf',
+  type: 'string',
+  value: '/usr/share/ovmf/x64/OVMF.4m.fd',
+  description: 'run 目标使用的 OVMF 固件镜像路径')

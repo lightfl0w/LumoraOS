@@ -1,0 +1,31 @@
+OUTPUT_FORMAT(elf64-x86-64)
+ENTRY(_start)
+
+SECTIONS
+{
+    . = 1M;
+
+    .text : {
+        KEEP(*(.text.entry))
+        *(.text .text.*)
+    }
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    }
+
+    .data : {
+        *(.data .data.*)
+    }
+
+    .bss : {
+        *(COMMON)
+        *(.bss .bss.*)
+    }
+
+    /DISCARD/ : {
+        *(.eh_frame*)
+        *(.note*)
+        *(.comment)
+    }
+}
