@@ -46,6 +46,9 @@ SECTIONS
         *(.bss .bss.*)
     }
 
+    __kernel_phys_start = __boot_base;
+    __kernel_phys_end = __lma + SIZEOF(.bss);
+
     /DISCARD/ : {
         *(.eh_frame*)
         *(.note*)
