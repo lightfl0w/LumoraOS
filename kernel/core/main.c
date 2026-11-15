@@ -4,6 +4,8 @@
 #include "../../include/mb2.h"
 #include "../arch/x86_64/gdt.h"
 #include "../arch/x86_64/idt.h"
+#include "../arch/x86_64/lapic.h"
+#include "../arch/x86_64/pic.h"
 #include "../drivers/serial.h"
 #include "../mm/paging.h"
 
@@ -73,6 +75,17 @@ void kmain(uint32_t magic, const struct mb2_info *info)
     gdt_init();
     paging_init();
     idt_init();
+
+    pic_setup();
+    lapic_init();
+    uint64_t hz = lapic_timer_init();
+
+    __asm__ volatile("sti");
+    lapic_wait_ticks(3);
+
+    serial_puts("kernel: lapic timer ");
+    serial_putdec(hz);
+    serial_puts(" Hz, 3 ticks ok\n");
 
     dump_boot_info(info);
 

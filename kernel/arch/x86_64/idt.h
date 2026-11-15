@@ -10,5 +10,6 @@ struct frame {
 };
 
 void idt_init(void);
+void x86_interrupt(const struct frame *f);
 
 #endif

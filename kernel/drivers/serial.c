@@ -38,3 +38,17 @@ void serial_puthex(uint64_t v)
     for (int i = 60; i >= 0; i -= 4)
         serial_putc(digits[(v >> i) & 0xf]);
 }
+
+void serial_putdec(uint64_t v)
+{
+    char buf[20];
+    int i = 0;
+
+    do {
+        buf[i++] = '0' + v % 10;
+        v /= 10;
+    } while (v);
+
+    while (i)
+        serial_putc(buf[--i]);
+}

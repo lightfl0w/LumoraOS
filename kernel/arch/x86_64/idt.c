@@ -2,6 +2,7 @@
 
 #include "../../drivers/serial.h"
 #include "idt.h"
+#include "lapic.h"
 
 /* P=1, DPL=0, TYPE=0xE */
 #define GATE_INTR 0x8e00
@@ -24,7 +25,7 @@ static struct {
     uint64_t base;
 } __attribute__((packed)) idtr;
 
-extern const void *const isr_stubs[32];
+extern const void *const isr_stubs[34];
 
 static void set_gate(int n, uint64_t handler) {
     idt[n].off_lo = handler & 0xffff;
@@ -46,7 +47,13 @@ static const char *const names[32] = {
     "22",  "23",  "24",  "25",  "26",  "27",  "#HV", "29",  "#VC", "#SX",
 };
 
-void x86_exception(const struct frame *f) {
+void x86_interrupt(const struct frame *f) {
+    /* 异常区之外的向量给 LAPIC */
+    if (f->vector >= 0x20) {
+        lapic_irq((uint32_t)f->vector);
+        return;
+    }
+
     serial_puts("kernel: exception ");
     serial_puts(f->vector < 32 ? names[f->vector] : "?");
     serial_puts(" vector=");
@@ -62,6 +69,8 @@ void x86_exception(const struct frame *f) {
 void idt_init(void) {
     for (int i = 0; i < 32; i++)
         set_gate(i, (uint64_t)isr_stubs[i]);
+    set_gate(0x20, (uint64_t)isr_stubs[32]);
+    set_gate(0x30, (uint64_t)isr_stubs[33]);
 
     idtr.limit = sizeof(idt) - 1;
     idtr.base = (uint64_t)idt;
