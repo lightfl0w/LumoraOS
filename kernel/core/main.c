@@ -7,25 +7,45 @@
 #include "../arch/x86_64/lapic.h"
 #include "../arch/x86_64/pic.h"
 #include "../drivers/serial.h"
+#include "../mm/kmalloc.h"
+#include "../mm/page_alloc.h"
 #include "../mm/paging.h"
 
-static void halt_forever(void)
-{
+static void halt_forever(void) {
     __asm__ volatile("cli; hlt");
     for (;;)
         ;
 }
 
-static void die(const char *msg)
-{
+static void die(const char *msg) {
     serial_puts("kernel: ");
     serial_puts(msg);
     serial_puts("\n");
     halt_forever();
 }
 
-static void dump_boot_info(const struct mb2_info *info)
-{
+static void dump_mmap(const struct mb2_tag_mmap *m, uint32_t tag_size) {
+    uint32_t count =
+        (m->entry_size > 0) ? (tag_size - sizeof(*m)) / m->entry_size : 0;
+    const uint8_t *e = (const uint8_t *)m->entries;
+
+    serial_puts("kernel: memory map entries: ");
+    serial_puthex(count);
+    serial_putc('\n');
+
+    for (uint32_t i = 0; i < count; i++, e += m->entry_size) {
+        const struct mb2_mmap_entry *r = (const void *)e;
+
+        if (r->type != MB2_MMAP_AVAILABLE)
+            continue;
+        serial_puthex(r->addr);
+        serial_puts(" - ");
+        serial_puthex(r->addr + r->len);
+        serial_putc('\n');
+    }
+}
+
+static void dump_boot_info(const struct mb2_info *info) {
     const uint8_t *p = (const uint8_t *)info + sizeof(*info);
     const uint8_t *end = (const uint8_t *)info + info->total_size;
 
@@ -34,36 +54,14 @@ static void dump_boot_info(const struct mb2_info *info)
 
         if (tag->type == MB2_TAG_END)
             break;
-
-        if (tag->type == MB2_TAG_MMAP) {
-            const struct mb2_tag_mmap *m = (const void *)tag;
-            uint32_t count = (m->entry_size > 0)
-                                 ? (tag->size - sizeof(*m)) / m->entry_size
-                                 : 0;
-
-            serial_puts("kernel: memory map entries: ");
-            serial_puthex(count);
-            serial_putc('\n');
-
-            const uint8_t *e = (const uint8_t *)m->entries;
-            for (uint32_t i = 0; i < count; i++, e += m->entry_size) {
-                const struct mb2_mmap_entry *r = (const void *)e;
-
-                if (r->type != MB2_MMAP_AVAILABLE)
-                    continue;
-                serial_puthex(r->addr);
-                serial_puts(" - ");
-                serial_puthex(r->addr + r->len);
-                serial_putc('\n');
-            }
-        }
+        if (tag->type == MB2_TAG_MMAP)
+            dump_mmap((const void *)tag, tag->size);
 
         p += (tag->size + MB2_TAG_ALIGN - 1) & ~(MB2_TAG_ALIGN - 1);
     }
 }
 
-void kmain(uint32_t magic, const struct mb2_info *info)
-{
+void kmain(uint32_t magic, const struct mb2_info *info) {
     serial_init();
 
     if (magic != MB2_BOOTLOADER_MAGIC)
@@ -75,6 +73,7 @@ void kmain(uint32_t magic, const struct mb2_info *info)
     gdt_init();
     paging_init();
     idt_init();
+    page_alloc_init(info);
 
     pic_setup();
     lapic_init();
@@ -86,6 +85,55 @@ void kmain(uint32_t magic, const struct mb2_info *info)
     serial_puts("kernel: lapic timer ");
     serial_putdec(hz);
     serial_puts(" Hz, 3 ticks ok\n");
+
+    /* 这里是用来自测的，之后可能会删掉 */
+    void *a = page_alloc();
+    void *b = page_alloc();
+
+    if (a == NULL || b == NULL)
+        die("page alloc exhausted");
+
+    *(uint64_t *)a = 0x6c756d6f7261ULL;
+    if (*(uint64_t *)a != 0x6c756d6f7261ULL)
+        die("page not writable via identity map");
+
+    page_free(b);
+    page_free(a);
+    void *c = page_alloc();
+
+    if (c != a)
+        die("page alloc selftest failed");
+    page_free(c);
+
+    serial_puts("kernel: page alloc: ");
+    serial_putdec(page_total_count());
+    serial_puts(" pages (");
+    serial_putdec(page_free_count());
+    serial_puts(" free), selftest ok\n");
+
+    /* 内核堆自测，之后可能会删 */
+    char *p = kmalloc(100);
+    char *q = kmalloc(100);
+
+    if (p == NULL || q == NULL || p == q)
+        die("kmalloc selftest failed");
+    for (uint32_t i = 0; i < 100; i++)
+        p[i] = (char)i;
+    if (p[99] != 99)
+        die("kmalloc not writable");
+    kfree(p);
+    kfree(q);
+
+    if (kmalloc(0) != NULL || kmalloc(KMALLOC_MAX + 1) != NULL)
+        die("kmalloc size check failed");
+
+    char *r = kmalloc(100);
+
+    if (r != q)
+        die("kmalloc LIFO selftest failed");
+    kfree(r);
+
+    serial_puts("kernel: kmalloc selftest ok\n");
 
     dump_boot_info(info);
 
