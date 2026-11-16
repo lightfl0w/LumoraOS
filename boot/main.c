@@ -172,6 +172,41 @@ static void add_mmap_tag(struct info_builder *b,
     }
 }
 
+static void add_framebuffer_tag(struct info_builder *b)
+{
+    EFI_HANDLE *handles;
+    uint64_t n;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
+    struct mb2_tag_framebuffer *tag;
+
+    if (BS->LocateHandleBuffer(EFI_LOCATE_BY_PROTOCOL,
+                               &EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL,
+                               &n, &handles) != EFI_SUCCESS)
+        die(u"no GOP handle");
+
+    for (uint64_t i = 0; i < n && gop == NULL; i++) {
+        if (BS->HandleProtocol(handles[i], &EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID,
+                               (void **)&gop) != EFI_SUCCESS)
+            gop = NULL;
+    }
+    if (gop == NULL || gop->Mode == NULL)
+        die(u"GOP unusable");
+
+    tag = append_tag(b, MB2_TAG_FRAMEBUFFER, sizeof(*tag));
+    tag->addr = gop->Mode->FrameBufferBase;
+    tag->pitch = gop->Mode->Info->PixelsPerScanLine * 4;
+    tag->width = gop->Mode->Info->HorizontalResolution;
+    tag->height = gop->Mode->Info->VerticalResolution;
+    tag->bpp = 32;
+    tag->type = 1;
+    tag->red_pos = 16;
+    tag->red_mask = 8;
+    tag->green_pos = 8;
+    tag->green_mask = 8;
+    tag->blue_pos = 0;
+    tag->blue_mask = 8;
+}
+
 static void get_map(EFI_MEMORY_DESCRIPTOR **map_out, uint64_t *size_out,
                     uint64_t *key_out, uint64_t *desc_size_out,
                     uint32_t *desc_ver_out) {
@@ -217,6 +252,7 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *st) {
 
     struct info_builder b = {info, sizeof(struct mb2_info)};
 
+    add_framebuffer_tag(&b);
     add_mmap_tag(&b, map, map_size, desc_size, desc_version);
     append_tag(&b, MB2_TAG_END, sizeof(struct mb2_tag));
     ((struct mb2_info *)info)->total_size = (uint32_t)b.used;

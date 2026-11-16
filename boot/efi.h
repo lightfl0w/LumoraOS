@@ -82,7 +82,7 @@ typedef struct {
     void *ProtocolsPerHandle;
     int64_t (*LocateHandleBuffer)(int, const EFI_GUID *, void *, uint64_t *,
                                   EFI_HANDLE **);
-    void *LocateProtocol;
+    int64_t (*LocateProtocol)(const EFI_GUID *, void *, void **);
     void *InstallMultipleProtocolInterfaces;
     void *UninstallMultipleProtocolInterfaces;
     void *CalculateCrc32;
@@ -157,8 +157,8 @@ typedef struct {
 } EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
 
 typedef struct {
-    uint64_t MaxMode;
-    uint64_t Mode;
+    uint32_t MaxMode;
+    uint32_t Mode;
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
     uint64_t SizeOfInfo;
     EFI_PHYSICAL_ADDRESS FrameBufferBase;
@@ -168,6 +168,7 @@ typedef struct {
 typedef struct {
     void *QueryMode;
     void *SetMode;
+    void *Blt;
     EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *Mode;
 } EFI_GRAPHICS_OUTPUT_PROTOCOL;
 
