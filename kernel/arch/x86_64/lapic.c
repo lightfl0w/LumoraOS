@@ -2,6 +2,7 @@
 
 #include "../../drivers/pit.h"
 #include "../../drivers/serial.h"
+#include "../../sched/thread.h"
 #include "lapic.h"
 #include "msr.h"
 
@@ -72,10 +73,12 @@ void lapic_irq(uint32_t vector) {
     if (vector == LAPIC_SPURIOUS)
         return;
 
-    if (vector == LAPIC_TIMER)
-        ticks++;
-
     apic_write(REG_EOI, 0);
+
+    if (vector == LAPIC_TIMER) {
+        ticks++;
+        sched_tick();
+    }
 }
 
 void lapic_wait_ticks(uint64_t n) {

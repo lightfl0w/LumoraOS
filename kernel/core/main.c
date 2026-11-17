@@ -7,11 +7,11 @@
 #include "../arch/x86_64/lapic.h"
 #include "../arch/x86_64/pic.h"
 #include "../drivers/console.h"
-#include "../drivers/keyboard.h"
 #include "../drivers/serial.h"
 #include "../mm/kmalloc.h"
 #include "../mm/page_alloc.h"
 #include "../mm/paging.h"
+#include "../sched/thread.h"
 
 static void halt_forever(void) {
     __asm__ volatile("cli; hlt");
@@ -131,6 +131,23 @@ static void test_kmalloc(void) {
     console_puts("kernel: kmalloc selftest ok\n");
 }
 
+static void worker(void *arg) {
+    const char *name = arg;
+    uint32_t n = 0;
+
+    while (n < 4) {
+        console_puts("<<");
+        console_puts(name);
+        console_putdec(++n);
+        console_puts(">>");
+        for (volatile uint32_t spin = 0; spin < 2000000; spin++)
+            ;
+    }
+    console_puts("<");
+    console_puts(name);
+    console_puts(" done> ");
+}
+
 void kmain(uint32_t magic, const struct mb2_info *info) {
     serial_init();
     console_init(find_fb(info));
@@ -161,14 +178,13 @@ void kmain(uint32_t magic, const struct mb2_info *info) {
     test_kmalloc();
     dump_boot_info(info);
 
-    keyboard_init();
-    console_puts("\nkernel ready - type:\n");
+    sched_init();
+    thread_create(worker, "A");
+    thread_create(worker, "B");
+    console_puts("\nsched: two threads running\n");
 
     for (;;) {
-        char c = keyboard_getkey();
-
-        if (c)
-            console_putc(c);
         __asm__ volatile("hlt");
+        thread_yield();
     }
 }
