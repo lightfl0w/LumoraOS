@@ -6,22 +6,31 @@ _start:
     mov     %ebx, %esi
 
     lea     tramp_pml4(%rip), %rax
-    lea     tramp_pdpt(%rip), %r10
+    lea     tramp_pdpt_phys(%rip), %r11
+    mov     %r11, %rcx
+    or      $(1 | 2), %rcx
+    mov     %rcx, (%rax)          /* 0 * 8 */
+
+    lea     tramp_pdpt_high(%rip), %r10
     mov     %r10, %rcx
-    or      $(1 | 2), %rcx        /* P | W */
-    mov     %rcx, (%rax)          /* pml4[0] */
-    mov     %rcx, 4088(%rax)      /* pml4[511] */
+    or      $(1 | 2), %rcx
+    mov     %rcx, 4088(%rax)      /* 511 * 8 */
+
+    lea     tramp_pdpt_phys(%rip), %r11
+    mov     %r11, %rcx
+    or      $(1 | 2), %rcx
+    mov     %rcx, 2184(%rax)      /* 273 * 8 */
+
+    movq    $(1 | 2 | 0x80), 4080(%r10)
 
     xor     %r8d, %r8d
 1:  mov     %r8, %r9
     shl     $30, %r9
-    or      $(1 | 2 | 0x80), %r9  /* P | W | PS */
-    mov     %r9, (%r10,%r8,8)
+    or      $(1 | 2 | 0x80), %r9
+    mov     %r9, (%r11,%r8,8)
     inc     %r8
     cmp     $4, %r8
     jb      1b
-
-    movq    $(1 | 2 | 0x80), 4080(%r10)
 
     lea     tramp_pml4(%rip), %rax
     mov     %rax, %cr3
@@ -45,7 +54,10 @@ _start_high:
 tramp_pml4:
     .skip   4096
     .align 4096
-tramp_pdpt:
+tramp_pdpt_high:
+    .skip   4096
+    .align 4096
+tramp_pdpt_phys:
     .skip   4096
 
     .section .bss

@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "../drivers/console.h"
+#include "../mm/addr.h"
 #include "../mm/kmalloc.h"
 #include "../mm/page_alloc.h"
 #include "thread.h"
@@ -62,7 +63,7 @@ static void schedule(void) {
 
 struct thread *thread_create(void (*fn)(void *), void *arg) {
     struct thread *t = kmalloc(sizeof(*t));
-    uint8_t *stack = page_alloc();
+    uint8_t *stack = phys_to_virt((uint64_t)page_alloc());
 
     if (t == NULL || stack == NULL) {
         kfree(t);

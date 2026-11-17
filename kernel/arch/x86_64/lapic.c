@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "../../drivers/pit.h"
+#include "../../mm/addr.h"
 #include "../../drivers/serial.h"
 #include "../../sched/thread.h"
 #include "lapic.h"
@@ -45,7 +46,7 @@ void lapic_init(void) {
     if (!(base & (1ull << 11)))
         wrmsr(MSR_APIC_BASE, base | (1ull << 11));
 
-    apic = (volatile uint32_t *)(base & 0xfffff000);
+    apic = phys_to_virt(base & 0xfffff000);
 
     apic_write(REG_LVT_TIMER, LAPIC_TIMER | LVT_MASK);
     apic_write(REG_SPURIOUS, LAPIC_SPURIOUS | (1u << 8));

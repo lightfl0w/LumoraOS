@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "kmalloc.h"
+#include "addr.h"
 #include "page_alloc.h"
 
 #define HDR_SIZE 16u
@@ -29,7 +30,7 @@ static uint32_t class_of(uint32_t block) {
 }
 
 static void *refill(uint32_t cls) {
-    char *page = page_alloc();
+    char *page = phys_to_virt((uint64_t)page_alloc());
 
     if (page == NULL)
         return NULL;

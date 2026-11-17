@@ -10,6 +10,7 @@
 #include "../drivers/serial.h"
 #include "../mm/kmalloc.h"
 #include "../mm/page_alloc.h"
+#include "../mm/addr.h"
 #include "../mm/paging.h"
 #include "../sched/thread.h"
 
@@ -87,9 +88,9 @@ static void test_page_alloc(void) {
     if (a == NULL || b == NULL)
         die("page alloc exhausted");
 
-    *(uint64_t *)a = 0x6c756d6f7261ULL;
-    if (*(uint64_t *)a != 0x6c756d6f7261ULL)
-        die("page not writable via identity map");
+    *(uint64_t *)phys_to_virt((uint64_t)a) = 0x6c756d6f7261ULL;
+    if (*(uint64_t *)phys_to_virt((uint64_t)a) != 0x6c756d6f7261ULL)
+        die("page not writable via physmap");
 
     page_free(b);
     page_free(a);
@@ -158,8 +159,10 @@ void kmain(uint32_t magic, const struct mb2_info *info) {
     if (info == NULL)
         die("no boot info");
 
+    info = phys_to_virt((uint64_t)info);
+
     gdt_init();
-    paging_init();
+    paging_init(info);
     idt_init();
     page_alloc_init(info);
 

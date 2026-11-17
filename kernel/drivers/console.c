@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "../../include/mb2.h"
+#include "../mm/addr.h"
 #include "../sync/spinlock.h"
 #include "console.h"
 #include "font.h"
@@ -124,7 +125,7 @@ void console_init(const struct mb2_tag_framebuffer *t) {
     if (t == NULL || t->bpp != 32 || t->type != 1)
         return;
 
-    fb = (uint32_t *)(uintptr_t)t->addr;
+    fb = phys_to_virt(t->addr);
     pitch = t->pitch;
     width = t->width;
     height = t->height;
