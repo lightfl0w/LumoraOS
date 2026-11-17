@@ -24,26 +24,34 @@ SECTIONS
     . = KERNEL_HIGH + __lma;
 
     .text : AT(__lma) {
+        __text_start = .;
         *(.text .text.*)
+        __text_end = .;
     }
     __lma = ALIGN(__lma + SIZEOF(.text), 4096);
     . = ALIGN(4096);
 
     .rodata : AT(__lma) {
+        __rodata_start = .;
         *(.rodata .rodata.*)
+        __rodata_end = .;
     }
     __lma = ALIGN(__lma + SIZEOF(.rodata), 4096);
     . = ALIGN(4096);
 
     .data : AT(__lma) {
+        __data_start = .;
         *(.data .data.*)
+        __data_end = .;
     }
     __lma = ALIGN(__lma + SIZEOF(.data), 4096);
     . = ALIGN(4096);
 
     .bss : AT(__lma) {
+        __bss_start = .;
         *(COMMON)
         *(.bss .bss.*)
+        __bss_end = .;
     }
 
     __kernel_phys_start = __boot_base;

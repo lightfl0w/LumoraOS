@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "../../include/mb2.h"
+#include "addr.h"
 #include "page_alloc.h"
 
 static uint64_t free_head;
@@ -12,7 +13,7 @@ extern char __kernel_phys_start[];
 extern char __kernel_phys_end[];
 
 static void push(uint64_t pa) {
-    *(uint64_t *)pa = free_head;
+    *(uint64_t *)phys_to_virt(pa) = free_head;
     free_head = pa;
     free_count++;
 }
@@ -22,7 +23,7 @@ void *page_alloc(void) {
         return NULL;
 
     uint64_t pa = free_head;
-    free_head = *(uint64_t *)pa;
+    free_head = *(uint64_t *)phys_to_virt(pa);
     free_count--;
     return (void *)pa;
 }
