@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "../../include/mb2.h"
+#include "../sync/spinlock.h"
 #include "console.h"
 #include "font.h"
 #include "serial.h"
@@ -16,6 +17,7 @@ static uint32_t *fb;
 static uint32_t pitch;
 static uint32_t width, height;
 static uint32_t col, row;
+static spinlock_t lock = SPINLOCK_INIT;
 
 static uint32_t cols(void) { return width / CELL_W; }
 
@@ -48,7 +50,7 @@ static void scroll(void) {
             fb[y * stride + x] = BG;
 }
 
-void console_putc(char c) {
+static void putc_locked(char c) {
     serial_putc(c);
 
     if (fb == NULL)
@@ -77,22 +79,36 @@ void console_putc(char c) {
     }
 }
 
+void console_putc(char c) {
+    uint64_t flags = spin_lock_irqsave(&lock);
+
+    putc_locked(c);
+    spin_unlock_irqrestore(&lock, flags);
+}
+
 void console_puts(const char *s) {
+    uint64_t flags = spin_lock_irqsave(&lock);
+
     while (*s)
-        console_putc(*s++);
+        putc_locked(*s++);
+    spin_unlock_irqrestore(&lock, flags);
 }
 
 void console_puthex(uint64_t v) {
     static const char digits[] = "0123456789abcdef";
+    uint64_t flags = spin_lock_irqsave(&lock);
 
-    console_puts("0x");
+    putc_locked('0');
+    putc_locked('x');
     for (int i = 60; i >= 0; i -= 4)
-        console_putc(digits[(v >> i) & 0xf]);
+        putc_locked(digits[(v >> i) & 0xf]);
+    spin_unlock_irqrestore(&lock, flags);
 }
 
 void console_putdec(uint64_t v) {
     char buf[20];
     int i = 0;
+    uint64_t flags = spin_lock_irqsave(&lock);
 
     do {
         buf[i++] = '0' + v % 10;
@@ -100,18 +116,11 @@ void console_putdec(uint64_t v) {
     } while (v);
 
     while (i)
-        console_putc(buf[--i]);
+        putc_locked(buf[--i]);
+    spin_unlock_irqrestore(&lock, flags);
 }
 
 void console_init(const struct mb2_tag_framebuffer *t) {
-    if (t == NULL) {
-        serial_puts("console: no fb tag\n");
-        return;
-    }
-    serial_puts("console: fb=");
-    serial_puthex(t->addr);
-    serial_puts("\n");
-
     if (t == NULL || t->bpp != 32 || t->type != 1)
         return;
 
